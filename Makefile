@@ -2,7 +2,7 @@ SHELL := /bin/sh
 
 IMAGE ?= sepsis-env:latest
 CONTAINER_NAME ?= sepsis-env
-PORT ?= 8000
+PORT ?= 7860
 DOCKERFILE ?= Dockerfile
 REGISTRY_IMAGE ?=
 
@@ -20,17 +20,17 @@ help:
 	@echo ""
 	@echo "Examples:"
 	@echo "  make build IMAGE=sepsis-env:latest"
-	@echo "  make run PORT=8000"
+	@echo "  make run PORT=7860"
 	@echo "  make deploy REGISTRY_IMAGE=registry.hf.space/your-space:latest"
 
 build:
 	docker build -f $(DOCKERFILE) -t $(IMAGE) .
 
 run:
-	docker run --rm -p $(PORT):8000 --name $(CONTAINER_NAME) $(IMAGE)
+	docker run --rm -p $(PORT):7860 --name $(CONTAINER_NAME) $(IMAGE)
 
 run-local:
-	docker run --rm -p 8001:8000 --name $(CONTAINER_NAME)-local $(IMAGE)
+	docker run --rm -p 8001:7860 --name $(CONTAINER_NAME)-local $(IMAGE)
 stop:
 	-@docker stop $(CONTAINER_NAME) >/dev/null 2>&1 || true
 

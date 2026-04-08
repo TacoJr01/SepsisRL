@@ -12,6 +12,6 @@ COPY sepsis_env ./sepsis_env
 # Make the package importable
 ENV PYTHONPATH=/app
 
-EXPOSE 8000
+EXPOSE 7860
 
-CMD ["uvicorn", "sepsis_env.server.app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "sepsis_env.server.app:app", "--host", "0.0.0.0", "--port", "7860"]

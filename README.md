@@ -2,10 +2,10 @@
 title: Sepsis Early Warning & Intervention
 emoji: 🏥
 colorFrom: red
-colorTo: orange
+colorTo: yellow
 sdk: docker
 pinned: false
-app_port: 8000
+app_port: 7860
 tags:
   - openenv
   - healthcare
