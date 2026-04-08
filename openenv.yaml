@@ -2,6 +2,6 @@ spec_version: 1
 name: sepsis-env
 type: space
 runtime: fastapi
-app: sepsis_env.server.app:app
+app: server.app:app
 port: 7860
 description: Sepsis Early Warning & Intervention environment for OpenEnv

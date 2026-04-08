@@ -25,7 +25,7 @@ from typing import Any, Optional
 
 from openenv.core.env_server import Environment
 
-from ..models import SepsisAction, SepsisObservation, SepsisState
+from models import SepsisAction, SepsisObservation, SepsisState
 from .patient_simulator import Ward
 
 NUM_PATIENTS = 8

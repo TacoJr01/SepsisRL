@@ -4,8 +4,8 @@ from fastapi.responses import HTMLResponse
 
 from openenv.core.env_server import create_fastapi_app
 
-from ..models import SepsisAction, SepsisObservation
-from .sepsis_environment import SepsisEnvironment
+from models import SepsisAction, SepsisObservation
+from server.sepsis_environment import SepsisEnvironment
 
 app = create_fastapi_app(
     env=SepsisEnvironment,
@@ -36,15 +36,11 @@ def home() -> str:
     return _HOME_HTML
 
 
-def main() -> None:
+def main(host: str = "0.0.0.0", port: int = 7860) -> None:
     """Run the OpenEnv server via Uvicorn."""
     import uvicorn
 
-    uvicorn.run(
-        "sepsis_env.server.app:app",
-        host="0.0.0.0",
-        port=7860,
-    )
+    uvicorn.run(app, host=host, port=port)
 
 
 if __name__ == "__main__":
