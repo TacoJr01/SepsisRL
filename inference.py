@@ -29,9 +29,9 @@ except ImportError:
             sys.path.insert(0, _CURRENT_DIR)
         from models import SepsisAction, SepsisObservation
 
-API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
+API_BASE_URL = os.getenv("API_BASE_URL")
 MODEL_NAME = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-72B-Instruct"
-API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
+API_KEY = os.getenv("API_KEY")
 LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 
 ENV_BASE_URL = os.getenv("ENV_BASE_URL") or os.getenv("OPENENV_BASE_URL")
@@ -302,8 +302,11 @@ def _make_env_client(base_url: str) -> EnvClient:
 
 
 async def main() -> None:
-    if not API_KEY:
-        _log_debug("[DEBUG] HF_TOKEN or API_KEY is not set")
+    if not API_BASE_URL or not API_KEY:
+        _log_debug("[DEBUG] API_BASE_URL and API_KEY must be provided by the validator environment")
+        log_start(task=TASK_NAME, env=BENCHMARK, model=MODEL_NAME)
+        log_end(success=False, steps=0, score=0.0, rewards=[])
+        return
 
     client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
