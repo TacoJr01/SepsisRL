@@ -70,10 +70,16 @@ class EpisodeMetrics:
 
 
 PolicyFn = Callable[[Dict], SepsisAction]
+EPSILON_SCORE = 1e-4
 
 
 def clip01(value: float) -> float:
     return max(0.0, min(1.0, value))
+
+
+def clip_open01(value: float, eps: float = EPSILON_SCORE) -> float:
+    """Clamp into the strict open interval (0,1)."""
+    return max(eps, min(1.0 - eps, value))
 
 
 def run_episode(seed: int, policy_fn: PolicyFn) -> EpisodeMetrics:
@@ -121,7 +127,7 @@ def score_task(task: TaskSpec, episodes: List[EpisodeMetrics]) -> Dict:
         + 0.10 * fatigue_component
         + 0.05 * termination_component
     )
-    score = round(clip01(score), 4)
+    score = round(clip_open01(score), 4)
 
     return {
         "task": task.name,
@@ -160,6 +166,116 @@ def evaluate_policy(policy_fn: PolicyFn) -> Dict:
         "all_tasks_passed": all_passed,
         "tasks": task_results,
     }
+
+
+def _task_by_name(name: str) -> TaskSpec:
+    for task in TASKS:
+        if task.name == name:
+            return task
+    raise ValueError(f"Unknown task name: {name}")
+
+
+def grade_task(task_name: str, policy_fn: PolicyFn | None = None) -> float:
+    """Return one task score strictly in (0,1)."""
+    if policy_fn is None:
+        policy_fn = heuristic_policy
+    task = _task_by_name(task_name)
+    episodes = [run_episode(seed=seed, policy_fn=policy_fn) for seed in task.seeds]
+    result = score_task(task=task, episodes=episodes)
+    return clip_open01(float(result["score"]))
+
+
+def grade_task_easy(policy_fn: PolicyFn | None = None) -> float:
+    return grade_task("early_detection_easy", policy_fn)
+
+
+def grade_task_medium(policy_fn: PolicyFn | None = None) -> float:
+    return grade_task("balanced_triage_medium", policy_fn)
+
+
+def grade_task_hard(policy_fn: PolicyFn | None = None) -> float:
+    return grade_task("high_recall_hard", policy_fn)
+
+
+def evaluate_tasks(policy_fn: PolicyFn | None = None) -> List[Dict]:
+    """Compatibility helper for validators expecting explicit task graders."""
+    if policy_fn is None:
+        policy_fn = heuristic_policy
+    return [
+        {
+            "name": "early_detection_easy",
+            "difficulty": "easy",
+            "objective": "Catch at least one septic patient while avoiding excessive false alarms.",
+            "score": round(grade_task_easy(policy_fn), 4),
+            "grader": "grade_task_easy",
+        },
+        {
+            "name": "balanced_triage_medium",
+            "difficulty": "medium",
+            "objective": "Save multiple patients while balancing escalation quality and alert fatigue.",
+            "score": round(grade_task_medium(policy_fn), 4),
+            "grader": "grade_task_medium",
+        },
+        {
+            "name": "high_recall_hard",
+            "difficulty": "hard",
+            "objective": "Maintain high recall under noisy observations with low missed severe cases.",
+            "score": round(grade_task_hard(policy_fn), 4),
+            "grader": "grade_task_hard",
+        },
+    ]
+
+
+def get_tasks() -> List[Dict]:
+    """Expose task metadata and bound grader names for external validators."""
+    return [
+        {
+            "name": "early_detection_easy",
+            "difficulty": "easy",
+            "objective": "Catch at least one septic patient while avoiding excessive false alarms.",
+            "grader": "grade_task_easy",
+        },
+        {
+            "name": "balanced_triage_medium",
+            "difficulty": "medium",
+            "objective": "Save multiple patients while balancing escalation quality and alert fatigue.",
+            "grader": "grade_task_medium",
+        },
+        {
+            "name": "high_recall_hard",
+            "difficulty": "hard",
+            "objective": "Maintain high recall under noisy observations with low missed severe cases.",
+            "grader": "grade_task_hard",
+        },
+    ]
+
+
+# Alias often expected by simple validators that look for a task list with graders.
+TASK_GRADERS = get_tasks()
+
+
+def get_task_graders() -> List[Dict]:
+    """Expose callable task graders for validators that introspect functions."""
+    return [
+        {
+            "name": "early_detection_easy",
+            "difficulty": "easy",
+            "objective": "Catch at least one septic patient while avoiding excessive false alarms.",
+            "grader": grade_task_easy,
+        },
+        {
+            "name": "balanced_triage_medium",
+            "difficulty": "medium",
+            "objective": "Save multiple patients while balancing escalation quality and alert fatigue.",
+            "grader": grade_task_medium,
+        },
+        {
+            "name": "high_recall_hard",
+            "difficulty": "hard",
+            "objective": "Maintain high recall under noisy observations with low missed severe cases.",
+            "grader": grade_task_hard,
+        },
+    ]
 
 
 def random_policy(context: Dict) -> SepsisAction:

@@ -12,7 +12,7 @@ from typing import Dict
 
 from openai import OpenAI
 
-from grader import TASKS, evaluate_policy
+from grader import TASKS, evaluate_policy, evaluate_tasks
 from inference import (
     MAX_TOKENS,
     MODEL_NAME,
@@ -130,6 +130,7 @@ def main() -> None:
 
     policy = make_model_policy(client)
     result = evaluate_policy(policy)
+    task_results = evaluate_tasks(policy)
 
     print("Baseline evaluation complete")
     print(f"overall_score={result['overall_score']:.4f}")
@@ -138,6 +139,10 @@ def main() -> None:
             f"- {task['task']} ({task['difficulty']}): "
             f"score={task['score']:.4f} threshold={task['pass_threshold']:.2f} passed={task['passed']}"
         )
+
+    print("\nTASK_SCORES_OPEN_INTERVAL")
+    for task in task_results:
+        print(f"- {task['name']}: score={task['score']:.4f} grader={task['grader']}")
 
     print("\nTASK_DEFINITIONS")
     print(json.dumps([
