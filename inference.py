@@ -21,7 +21,13 @@ except ImportError:
 try:
     from SepsisRL.models import SepsisAction, SepsisObservation
 except ImportError:
-    from .models import SepsisAction, SepsisObservation
+    try:
+        from .models import SepsisAction, SepsisObservation
+    except ImportError:
+        _CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+        if _CURRENT_DIR not in sys.path:
+            sys.path.insert(0, _CURRENT_DIR)
+        from models import SepsisAction, SepsisObservation
 
 API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
 MODEL_NAME = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-72B-Instruct"
