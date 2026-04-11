@@ -29,9 +29,9 @@ except ImportError:
             sys.path.insert(0, _CURRENT_DIR)
         from models import SepsisAction, SepsisObservation
 
-API_BASE_URL = os.getenv("API_BASE_URL")
+API_BASE_URL = os.environ.get("API_BASE_URL")
 MODEL_NAME = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-72B-Instruct"
-API_KEY = os.getenv("API_KEY")
+API_KEY = os.environ.get("API_KEY")
 LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 
 ENV_BASE_URL = os.getenv("ENV_BASE_URL") or os.getenv("OPENENV_BASE_URL")
@@ -239,6 +239,23 @@ def _choose_action(
     return _heuristic_action(patients)
 
 
+def _proxy_warmup_call(client: OpenAI) -> None:
+    """Force at least one request through the injected LiteLLM proxy."""
+    try:
+        client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[
+                {"role": "system", "content": "Reply with exactly: ok"},
+                {"role": "user", "content": "ok"},
+            ],
+            temperature=0.0,
+            max_tokens=1,
+            stream=False,
+        )
+    except Exception as exc:
+        _log_debug(f"[DEBUG] LLM warmup call failed: {exc}")
+
+
 def _start_container(image_name: str, port: int) -> Optional[str]:
     name = f"sepsis-env-{uuid.uuid4().hex[:8]}"
     cmd = [
@@ -302,13 +319,17 @@ def _make_env_client(base_url: str) -> EnvClient:
 
 
 async def main() -> None:
-    if not API_BASE_URL or not API_KEY:
-        _log_debug("[DEBUG] API_BASE_URL and API_KEY must be provided by the validator environment")
+    try:
+        api_base_url = os.environ["API_BASE_URL"]
+        api_key = os.environ["API_KEY"]
+    except KeyError as exc:
+        _log_debug(f"[DEBUG] Missing required environment variable: {exc}")
         log_start(task=TASK_NAME, env=BENCHMARK, model=MODEL_NAME)
         log_end(success=False, steps=0, score=0.0, rewards=[])
         return
 
-    client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
+    client = OpenAI(base_url=api_base_url, api_key=api_key)
+    _proxy_warmup_call(client)
 
     container_name = None
     base_url = ENV_BASE_URL or f"http://localhost:{ENV_PORT}"
