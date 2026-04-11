@@ -96,6 +96,42 @@ of worsening by a stage-specific modifier.
 
 ## Quick Start
 
+### Task Grader (easy -> medium -> hard)
+
+Run deterministic task grading with clear 0.0-1.0 scores:
+
+```bash
+python grader.py
+```
+
+Tasks:
+
+- `early_detection_easy`
+- `balanced_triage_medium`
+- `high_recall_hard`
+
+Each task is evaluated on fixed seeds and graded with deterministic criteria
+using trajectory metrics: cumulative reward, saved patients, missed patients,
+alert fatigue, and episode termination.
+
+### Baseline Inference (OpenAI)
+
+Run the model baseline across all 3 tasks:
+
+```bash
+export OPENAI_API_KEY="<your_key>"
+python baseline_inference.py
+```
+
+Optional proxy/base URL:
+
+```bash
+export OPENAI_BASE_URL="https://your-proxy-or-openai-compatible-endpoint/v1"
+```
+
+The baseline script uses the OpenAI API client and prints a reproducible
+overall score plus per-task scores.
+
 ### Run locally (no Docker)
 
 ```bash
