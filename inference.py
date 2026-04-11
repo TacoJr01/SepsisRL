@@ -18,7 +18,7 @@ try:
 except ImportError:
     from openenv.core.env_client import EnvClient
 
-from sepsis_env.models import SepsisAction, SepsisObservation
+from .models import SepsisAction, SepsisObservation
 
 API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
 MODEL_NAME = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-72B-Instruct"
