@@ -1,17 +1,31 @@
 """Task-based grader for the SepsisRL environment.
 
 This grader defines 3 deterministic tasks (easy, medium, hard) and computes a
-score in [0.0, 1.0] for each task from trajectory statistics across fixed seeds.
+score strictly in (0.0, 1.0) for each task from trajectory statistics across
+fixed seeds.
 """
 
 from __future__ import annotations
 
+import os
+import sys
 from dataclasses import dataclass
 from statistics import mean
 from typing import Callable, Dict, List
 
-from models import SepsisAction
-from server.sepsis_environment import MAX_STEPS, NUM_PATIENTS, SepsisEnvironment
+try:
+    from SepsisRL.models import SepsisAction
+    from SepsisRL.server.sepsis_environment import MAX_STEPS, NUM_PATIENTS, SepsisEnvironment
+except ImportError:
+    try:
+        from .models import SepsisAction
+        from .server.sepsis_environment import MAX_STEPS, NUM_PATIENTS, SepsisEnvironment
+    except ImportError:
+        _CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+        if _CURRENT_DIR not in sys.path:
+            sys.path.insert(0, _CURRENT_DIR)
+        from models import SepsisAction
+        from server.sepsis_environment import MAX_STEPS, NUM_PATIENTS, SepsisEnvironment
 
 
 @dataclass(frozen=True)
@@ -224,6 +238,16 @@ def evaluate_tasks(policy_fn: PolicyFn | None = None) -> List[Dict]:
             "grader": "grade_task_hard",
         },
     ]
+
+
+def grade(policy_fn: PolicyFn | None = None) -> List[Dict]:
+    """Common validator entrypoint: returns >=3 task scores in strict (0,1)."""
+    return evaluate_tasks(policy_fn)
+
+
+def grader(policy_fn: PolicyFn | None = None) -> List[Dict]:
+    """Alias used by some validators."""
+    return evaluate_tasks(policy_fn)
 
 
 def get_tasks() -> List[Dict]:
