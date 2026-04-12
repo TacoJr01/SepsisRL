@@ -29,6 +29,15 @@ except ImportError:
             sys.path.insert(0, _CURRENT_DIR)
         from models import SepsisAction, SepsisObservation
 
+# Import grader for task evaluation
+try:
+    from grader import grade_task_easy, grade_task_medium, grade_task_hard
+except ImportError:
+    try:
+        from SepsisRL.grader import grade_task_easy, grade_task_medium, grade_task_hard
+    except ImportError:
+        grade_task_easy = grade_task_medium = grade_task_hard = None
+
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 HF_TOKEN = os.getenv("HF_TOKEN")
@@ -396,7 +405,32 @@ async def main() -> None:
 
         max_total_reward = MAX_STEPS * 10.0
         if max_total_reward > 0:
-            score = max(0.0, min(sum(rewards) / max_total_reward, 1.0))
+            episode_score = max(0.0, min(sum(rewards) / max_total_reward, 1.0))
+        else:
+            episode_score = 0.0
+
+        # Primary scoring: use grader task scores (guaranteed to be in (0, 1))
+        score = 0.0
+        if grade_task_easy and grade_task_medium and grade_task_hard:
+            try:
+                easy_score = grade_task_easy()
+                medium_score = grade_task_medium()
+                hard_score = grade_task_hard()
+                # Use the average of task scores
+                score = (easy_score + medium_score + hard_score) / 3.0
+                _log_debug(f"[DEBUG] Task scores: easy={easy_score:.4f}, medium={medium_score:.4f}, hard={hard_score:.4f}, avg={score:.4f}")
+                success = score >= SUCCESS_SCORE_THRESHOLD
+            except Exception as e:
+                _log_debug(f"[DEBUG] Grader evaluation failed: {e}, falling back to episode score")
+                score = episode_score
+        else:
+            # Fallback if grader not available
+            score = episode_score
+            _log_debug(f"[DEBUG] Grader not available, using episode score: {score:.4f}")
+
+        # Ensure score is strictly in (0, 1)
+        EPSILON = 1e-4
+        score = max(EPSILON, min(score, 1.0 - EPSILON))
         success = score >= SUCCESS_SCORE_THRESHOLD
 
     except Exception as exc:
