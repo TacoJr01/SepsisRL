@@ -29,9 +29,10 @@ except ImportError:
             sys.path.insert(0, _CURRENT_DIR)
         from models import SepsisAction, SepsisObservation
 
-API_BASE_URL = os.environ.get("API_BASE_URL") or os.environ.get("OPENAI_BASE_URL")
-MODEL_NAME = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-72B-Instruct"
-API_KEY = os.environ.get("API_KEY") or os.environ.get("OPENAI_API_KEY")
+API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
+HF_TOKEN = os.getenv("HF_TOKEN")
+API_KEY = HF_TOKEN or os.environ.get("API_KEY") or os.environ.get("OPENAI_API_KEY")
 LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 
 ENV_BASE_URL = os.getenv("ENV_BASE_URL") or os.getenv("OPENENV_BASE_URL")
@@ -320,10 +321,10 @@ def _make_env_client(base_url: str) -> EnvClient:
 
 async def main() -> None:
     try:
-        api_key = os.environ.get("API_KEY") or os.environ.get("OPENAI_API_KEY")
+        api_key = os.getenv("HF_TOKEN") or os.environ.get("API_KEY") or os.environ.get("OPENAI_API_KEY")
         if not api_key:
-            raise KeyError("API_KEY or OPENAI_API_KEY")
-        api_base_url = os.environ.get("API_BASE_URL") or os.environ.get("OPENAI_BASE_URL")
+            raise KeyError("HF_TOKEN (or API_KEY/OPENAI_API_KEY)")
+        api_base_url = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
     except KeyError as exc:
         _log_debug(f"[DEBUG] Missing required environment variable: {exc}")
         log_start(task=TASK_NAME, env=BENCHMARK, model=MODEL_NAME)
