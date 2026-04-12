@@ -214,27 +214,27 @@ def grade_task_hard(policy_fn: PolicyFn | None = None) -> float:
 def evaluate_tasks(policy_fn: PolicyFn | None = None) -> List[Dict]:
     """Compatibility helper for validators expecting explicit task graders."""
     if policy_fn is None:
-        policy_fn = heuristic_policy
+        policy_fn = aggressive_policy
     return [
         {
             "name": "early_detection_easy",
             "difficulty": "easy",
             "objective": "Catch at least one septic patient while avoiding excessive false alarms.",
-            "score": round(grade_task_easy(policy_fn), 4),
+            "score": float(grade_task_easy(policy_fn)),
             "grader": "grade_task_easy",
         },
         {
             "name": "balanced_triage_medium",
             "difficulty": "medium",
             "objective": "Save multiple patients while balancing escalation quality and alert fatigue.",
-            "score": round(grade_task_medium(policy_fn), 4),
+            "score": float(grade_task_medium(policy_fn)),
             "grader": "grade_task_medium",
         },
         {
             "name": "high_recall_hard",
             "difficulty": "hard",
             "objective": "Maintain high recall under noisy observations with low missed severe cases.",
-            "score": round(grade_task_hard(policy_fn), 4),
+            "score": float(grade_task_hard(policy_fn)),
             "grader": "grade_task_hard",
         },
     ]
@@ -357,12 +357,49 @@ def heuristic_policy(context: Dict) -> SepsisAction:
     return SepsisAction(patient_id=best_pid, intervention=intervention)
 
 
+def aggressive_policy(context: Dict) -> SepsisAction:
+    """More aggressive escalation policy: faster to intervene based on vitals."""
+    obs = context["observation"]
+    patients = obs.patients or []
+    best_pid = 0
+    best_score = -1
+
+    for patient in patients:
+        score = 0
+        # Aggressive weighting: catch potential sepsis early
+        if float(patient.get("respiratory_rate") or 0.0) >= 20:  # lower threshold
+            score += 1
+        if float(patient.get("systolic_bp") or 999.0) <= 110:  # lower threshold
+            score += 1
+        if float(patient.get("heart_rate") or 0.0) > 95:  # lower threshold
+            score += 1
+        if float(patient.get("temperature") or 0.0) > 38.0:  # lower threshold
+            score += 1
+        if float(patient.get("lactate") or 0.0) > 1.5:  # lower threshold
+            score += 2
+        if float(patient.get("spo2") or 100.0) < 95:  # lower threshold
+            score += 1
+
+        if score > best_score:
+            best_score = score
+            best_pid = int(patient.get("patient_id") or 0)
+
+    if best_score >= 2:
+        intervention = "iv_fluids"  # more aggressive than antibiotics
+    elif best_score >= 1:
+        intervention = "start_antibiotics"
+    else:
+        intervention = "order_cultures"  # still proactive
+
+    return SepsisAction(patient_id=best_pid, intervention=intervention)
+
+
 def main() -> None:
     print("=" * 70)
     print("SepsisRL Task Grader (easy -> medium -> hard)")
     print("=" * 70)
 
-    for name, policy in (("random", random_policy), ("heuristic", heuristic_policy)):
+    for name, policy in (("random", random_policy), ("heuristic", heuristic_policy), ("aggressive", aggressive_policy)):
         result = evaluate_policy(policy)
         print(f"\nPolicy: {name}")
         print(f"overall_score={result['overall_score']:.4f} all_tasks_passed={result['all_tasks_passed']}")
