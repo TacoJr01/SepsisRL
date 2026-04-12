@@ -11,7 +11,7 @@ import os
 import sys
 from dataclasses import dataclass
 from statistics import mean
-from typing import Callable, Dict, List
+from typing import Callable, Dict, List, Optional
 
 try:
     from SepsisRL.models import SepsisAction
@@ -26,6 +26,32 @@ except ImportError:
             sys.path.insert(0, _CURRENT_DIR)
         from models import SepsisAction
         from server.sepsis_environment import MAX_STEPS, NUM_PATIENTS, SepsisEnvironment
+
+
+# Logging functions for STDOUT format compliance
+def _log_debug(message: str) -> None:
+    print(message, file=sys.stderr, flush=True)
+
+
+def log_start(task: str, env: str, model: str) -> None:
+    print(f"[START] task={task} env={env} model={model}", flush=True)
+
+
+def log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
+    error_val = error if error else "null"
+    done_val = str(done).lower()
+    print(
+        f"[STEP] step={step} action={action} reward={reward:.2f} done={done_val} error={error_val}",
+        flush=True,
+    )
+
+
+def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
+    rewards_str = ",".join(f"{r:.2f}" for r in rewards)
+    print(
+        f"[END] success={str(success).lower()} steps={steps} score={score:.2f} rewards={rewards_str}",
+        flush=True,
+    )
 
 
 @dataclass(frozen=True)
@@ -395,19 +421,40 @@ def aggressive_policy(context: Dict) -> SepsisAction:
 
 
 def main() -> None:
-    print("=" * 70)
-    print("SepsisRL Task Grader (easy -> medium -> hard)")
-    print("=" * 70)
-
-    for name, policy in (("random", random_policy), ("heuristic", heuristic_policy), ("aggressive", aggressive_policy)):
+    task_name = "sepsis-grader"
+    env_name = "sepsis-env"
+    model_name = "heuristic-aggregate"
+    
+    log_start(task=task_name, env=env_name, model=model_name)
+    
+    all_rewards: List[float] = []
+    all_scores: List[float] = []
+    step_count = 0
+    
+    for policy_name, policy in (("random", random_policy), ("heuristic", heuristic_policy), ("aggressive", aggressive_policy)):
         result = evaluate_policy(policy)
-        print(f"\nPolicy: {name}")
-        print(f"overall_score={result['overall_score']:.4f} all_tasks_passed={result['all_tasks_passed']}")
+        overall_score = result['overall_score']
+        all_scores.append(overall_score)
+        
+        # Emit [STEP] for each policy evaluation
+        step_count += 1
+        action_str = f"policy={policy_name} overall_score={overall_score:.4f}"
+        log_step(step=step_count, action=action_str, reward=overall_score, done=False, error=None)
+        
+        # Log debug info to stderr
+        _log_debug(f"Policy: {policy_name}")
+        _log_debug(f"  overall_score={result['overall_score']:.4f} all_tasks_passed={result['all_tasks_passed']}")
         for task in result["tasks"]:
-            print(
-                f"  - {task['task']} ({task['difficulty']}): "
+            _log_debug(
+                f"    - {task['task']} ({task['difficulty']}): "
                 f"score={task['score']:.4f} threshold={task['pass_threshold']:.2f} passed={task['passed']}"
             )
+    
+    # Final score is the best achieved
+    final_score = max(all_scores) if all_scores else 0.0
+    success = final_score >= 0.5  # arbitrary threshold
+    
+    log_end(success=success, steps=step_count, score=final_score, rewards=all_scores)
 
 
 if __name__ == "__main__":
